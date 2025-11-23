@@ -1,5 +1,8 @@
-# Dockerfile
 FROM php:8.2-fpm
+
+# Get user ID from build argument
+ARG UID=1000
+ARG GID=1000
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -31,12 +34,20 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 # Copy Composer from composer image
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Modify www-data user to match host user UID/GID
+RUN usermod -u ${UID} www-data && \
+    groupmod -g ${GID} www-data
+
 # Set working directory
 WORKDIR /var/www
 
-# Create log directories with proper permissions
-RUN mkdir -p /var/www/storage /var/www/bootstrap/cache \
+# Create necessary directories with correct ownership
+RUN mkdir -p /var/www/storage/framework/{cache,sessions,views} \
+    && mkdir -p /var/www/bootstrap/cache \
     && chown -R www-data:www-data /var/www
+
+# Switch to www-data user
+USER www-data
 
 # Start php-fpm
 CMD ["php-fpm"]
