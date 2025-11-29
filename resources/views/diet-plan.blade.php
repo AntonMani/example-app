@@ -20,11 +20,16 @@
                 <div class="p-6 text-gray-900">
                     <h3 class="text-lg font-semibold mb-4">Your Profile</h3>
 
-                    @if($user->birth_date && $user->height && $user->weight)
+                    @php
+                        $age = $user->age ?? ($user->birth_date ? \Carbon\Carbon::parse($user->birth_date)->age : null);
+                        $hasCompleteProfile = $age && $user->height && $user->weight;
+                    @endphp
+
+                    @if($hasCompleteProfile)
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                             <div class="bg-blue-50 p-4 rounded-lg">
                                 <p class="text-sm text-gray-600">Age</p>
-                                <p class="text-2xl font-bold text-blue-600">{{ \Carbon\Carbon::parse($user->birth_date)->age}} years</p>
+                                <p class="text-2xl font-bold text-blue-600">{{ $age }} years</p>
                             </div>
                             <div class="bg-green-50 p-4 rounded-lg">
                                 <p class="text-sm text-gray-600">Height</p>
@@ -36,15 +41,14 @@
                             </div>
                         </div>
 
-                        <form method="POST" action="{{ route('diet-plan.generate') }}">
-                            @csrf
-                            <button type="submit" class="inline-flex items-center px-6 py-3 bg-indigo-600 border border-transparent rounded-md font-semibold text-white hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                </svg>
-                                Generate My AI Diet Plan
-                            </button>
-                        </form>
+                        @if(!isset($showPlan))
+                            <form method="POST" action="{{ route('diet-plan.generate') }}">
+                                @csrf
+                                <button type="submit" style="background: #FFCC99; color: black; padding: 10px 40px; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer;">
+                                     Generate My Personalized Diet Plan
+                                </button>
+                            </form>
+                        @endif
                     @else
                         <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
                             <div class="flex">
@@ -67,70 +71,251 @@
                 </div>
             </div>
 
-            <!-- Generated Diet Plan -->
-            @if(isset($dietPlan))
+            @if(isset($dietPlanData))
+                <!-- Health Assessment -->
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 text-gray-900">
+                    <div class="p-6">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-semibold">Your Personalized Diet Plan</h3>
-                            @if(isset($bmi))
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                                    BMI: {{ $bmi }}
-                                </span>
-                            @endif
+                            <h3 class="text-2xl font-bold text-gray-900">Your Health Assessment</h3>
+                            <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium
+                                @if($bmi < 18.5) bg-blue-100 text-blue-800
+                                @elseif($bmi < 25) bg-green-100 text-green-800
+                                @elseif($bmi < 30) bg-yellow-100 text-yellow-800
+                                @else bg-red-100 text-red-800
+                                @endif">
+                                BMI: {{ $dietPlanData['user']['bmi'] }} - {{ $dietPlanData['user']['bmi_category'] }}
+                            </span>
                         </div>
-
-                        <div class="prose max-w-none">
-                            <div class="bg-gray-50 p-6 rounded-lg whitespace-pre-wrap">{{ $dietPlan }}</div>
+                        <p class="text-gray-700 mb-4">{{ $dietPlanData['health_assessment']['summary'] }}</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            @foreach($dietPlanData['health_assessment']['recommendations'] as $recommendation)
+                                <div class="flex items-start">
+                                    <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span class="text-gray-700">{{ $recommendation }}</span>
+                                </div>
+                            @endforeach
                         </div>
+                    </div>
+                </div>
 
-                        <div class="mt-6 flex gap-4">
-                            <form method="POST" action="{{ route('diet-plan.generate') }}">
-                                @csrf
-                                <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                                    Generate New Plan
-                                </button>
-                            </form>
+                <!-- Daily Calories -->
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-4">Daily Calorie Target</h3>
+                        <div class="text-center mb-6">
+                            <p class="text-5xl font-bold text-indigo-600">{{ $dietPlanData['daily_calories']['total'] }}</p>
+                            <p class="text-gray-600">calories per day</p>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            @foreach($dietPlanData['daily_calories']['breakdown'] as $meal => $data)
+                                <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg text-center">
+                                    <p class="text-sm text-gray-600 capitalize">{{ $meal }}</p>
+                                    <p class="text-2xl font-bold text-gray-900">{{ $data['calories'] }}</p>
+                                    <p class="text-xs text-gray-500">{{ $data['percentage'] }}%</p>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Macronutrients -->
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-6">Macronutrient Breakdown</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            @foreach($dietPlanData['macronutrients'] as $name => $data)
+                                <div class="bg-gradient-to-br
+                                    @if($name === 'protein') from-red-50 to-red-100
+                                    @elseif($name === 'carbohydrates') from-yellow-50 to-yellow-100
+                                    @else from-blue-50 to-blue-100
+                                    @endif p-6 rounded-lg">
+                                    <h4 class="text-lg font-semibold capitalize
+                                        @if($name === 'protein') text-red-700
+                                        @elseif($name === 'carbohydrates') text-yellow-700
+                                        @else text-blue-700
+                                        @endif mb-2">{{ $name }}</h4>
+                                    <p class="text-3xl font-bold
+                                        @if($name === 'protein') text-red-600
+                                        @elseif($name === 'carbohydrates') text-yellow-600
+                                        @else text-blue-600
+                                        @endif">{{ $data['grams'] }}g</p>
+                                    <p class="text-sm
+                                        @if($name === 'protein') text-red-600
+                                        @elseif($name === 'carbohydrates') text-yellow-600
+                                        @else text-blue-600
+                                        @endif mb-2">{{ $data['percentage'] }}% of calories</p>
+                                    <p class="text-sm text-gray-600">{{ $data['description'] }}</p>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7-Day Meal Plan -->
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-6">7-Day Meal Plan</h3>
+                        <div class="space-y-6">
+                            @foreach($dietPlanData['meal_plan'] as $day)
+                                <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
+                                    <div class="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3">
+                                        <h4 class="text-xl font-bold text-white">{{ $day['day'] }}</h4>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-6">
+                                        @foreach(['breakfast', 'lunch', 'dinner', 'snacks'] as $mealType)
+                                            <div class="bg-gray-50 p-4 rounded-lg">
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <h5 class="font-semibold text-gray-900 capitalize">{{ $mealType }}</h5>
+                                                    <span class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded">
+                                                        {{ $day['meals'][$mealType]['calories'] }} cal
+                                                    </span>
+                                                </div>
+                                                <ul class="space-y-1">
+                                                    @foreach($day['meals'][$mealType]['items'] as $item)
+                                                        <li class="text-sm text-gray-700 flex items-start">
+                                                            <span class="text-indigo-500 mr-1">•</span>
+                                                            <span>{{ $item }}</span>
+                                                        </li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Foods to Prioritize & Limit -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Prioritize -->
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="p-6">
+                            <h3 class="text-2xl font-bold text-green-700 mb-4">✅ Foods to Prioritize</h3>
+                            <div class="space-y-4">
+                                @foreach($dietPlanData['foods_to_prioritize'] as $food)
+                                    <div class="bg-green-50 p-4 rounded-lg">
+                                        <h4 class="font-semibold text-green-800 mb-2">
+                                            <span class="text-2xl mr-2">{{ $food['icon'] }}</span>
+                                            {{ $food['category'] }}
+                                        </h4>
+                                        <p class="text-sm text-green-700">
+                                            {{ implode(', ', $food['items']) }}
+                                        </p>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Limit -->
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="p-6">
+                            <h3 class="text-2xl font-bold text-red-700 mb-4">⚠️ Foods to Limit</h3>
+                            <div class="space-y-4">
+                                @foreach($dietPlanData['foods_to_limit'] as $food)
+                                    <div class="bg-red-50 p-4 rounded-lg">
+                                        <h4 class="font-semibold text-red-800 mb-2">
+                                            <span class="text-2xl mr-2">{{ $food['icon'] }}</span>
+                                            {{ $food['category'] }}
+                                        </h4>
+                                        <p class="text-sm text-red-700 mb-1">
+                                            {{ implode(', ', $food['items']) }}
+                                        </p>
+                                        <p class="text-xs text-red-600 italic">{{ $food['reason'] }}</p>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nutrition Tips -->
+                <div class="bg-gradient-to-br from-indigo-50 to-purple-50 overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <h3 class="text-2xl font-bold text-gray-900 mb-4">💡 Nutrition Tips for Success</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            @foreach($dietPlanData['nutrition_tips'] as $tip)
+                                <div class="flex items-start bg-white p-3 rounded-lg shadow-sm">
+                                    <span class="text-gray-700">{{ $tip }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6 flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-gray-600">Generated at {{ $dietPlanData['generated_at'] }}</p>
+                        </div>
+                        <form method="POST" action="{{ route('diet-plan.generate') }}">
+                            @csrf
+                            <button type="submit" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 border border-transparent rounded-md font-semibold text-white hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Generate New Plan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Disclaimer -->
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700">
+                                <strong>Disclaimer:</strong> This is a general diet plan generated for educational purposes. Individual needs may vary based on activity level, medical conditions, and personal preferences. Always consult with a healthcare professional or registered dietitian before making significant dietary changes.
+                            </p>
                         </div>
                     </div>
                 </div>
             @endif
 
-            <!-- Tips Card -->
-            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6">
-                    <h3 class="text-lg font-semibold text-gray-900 mb-3">💡 How it works</h3>
-                    <ul class="space-y-2 text-gray-700">
-                        <li class="flex items-start">
-                            <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                            </svg>
-                            <span>Our AI analyzes your age, height, and weight</span>
-                        </li>
-                        <li class="flex items-start">
-                            <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                            </svg>
-                            <span>Calculates your BMI and health status</span>
-                        </li>
-                        <li class="flex items-start">
-                            <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                            </svg>
-                            <span>Generates a personalized 7-day meal plan</span>
-                        </li>
-                        <li class="flex items-start">
-                            <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                            </svg>
-                            <span>Provides nutrition tips tailored to your profile</span>
-                        </li>
-                    </ul>
-                    <p class="mt-4 text-sm text-gray-600">
-                        ⚠️ <strong>Disclaimer:</strong> This is AI-generated advice. Please consult with a healthcare professional before making significant dietary changes.
-                    </p>
+            <!-- How it Works (shown when no plan generated yet) -->
+            @if(!isset($showPlan) && $hasCompleteProfile)
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 overflow-hidden shadow-sm sm:rounded-lg">
+                    <div class="p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-3">💡 How it works</h3>
+                        <ul class="space-y-2 text-gray-700">
+                            <li class="flex items-start">
+                                <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                                <span>Our AI analyzes your age, height, and weight</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                                <span>Calculates your BMI and health status</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                                <span>Generates a personalized 7-day meal plan</span>
+                            </li>
+                            <li class="flex items-start">
+                                <svg class="w-5 h-5 text-green-500 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                                <span>Provides nutrition tips tailored to your profile</span>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
-            </div>
+            @endif
         </div>
     </div>
 </x-app-layout>
