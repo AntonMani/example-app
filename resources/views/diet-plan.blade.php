@@ -8,10 +8,35 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
 
+            <!-- Success Message -->
+            @if(session('success'))
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+                    <strong class="font-bold">Success!</strong>
+                    <span class="block sm:inline">{{ session('success') }}</span>
+                </div>
+            @endif
+
+            <!-- Error Message -->
             @if(session('error'))
                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
                     <strong class="font-bold">Error!</strong>
                     <span class="block sm:inline">{{ session('error') }}</span>
+                </div>
+            @endif
+
+            <!-- Plans Limit Info -->
+            @if(isset($plansCount))
+                <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-blue-700">
+                                <strong>Diet Plans:</strong> You have generated {{ $plansCount }} out of {{ $maxPlans }} allowed plans.
+                            </p>
+                        </div>
+                        @if($hasReachedLimit)
+                            <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded">Limit Reached</span>
+                        @endif
+                    </div>
                 </div>
             @endif
 
@@ -41,13 +66,29 @@
                             </div>
                         </div>
 
-                        @if(!isset($showPlan))
+                        @if(!isset($showPlan) && !$hasReachedLimit)
                             <form method="POST" action="{{ route('diet-plan.generate') }}">
                                 @csrf
-                                <button type="submit" style="background: #FFCC99; color: black; padding: 10px 40px; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer;">
-                                     Generate My Personalized Diet Plan
+                                <button type="submit" style="background: #FFA500; color: white; padding: 10px 40px; font-size: 18px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; transition: background 0.3s;" onmouseover="this.style.background='#FF8C00'" onmouseout="this.style.background='#FFA500'">
+                                    Generate My Personalized Diet Plan
                                 </button>
                             </form>
+                        @elseif($hasReachedLimit && !isset($showPlan))
+                            <div class="bg-red-50 border-l-4 border-red-400 p-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm text-red-700">
+                                            <strong>⚠️ Limit Reached!</strong> You've generated the maximum number of diet plans.
+                                        </p>
+                                        <p class="text-xs text-red-600 mt-1">
+                                            Go to "My Plans" to view and delete existing plans.
+                                        </p>
+                                    </div>
+                                    <a href="{{ route('diet-plan.list') }}" style="background: #4F46E5; color: white; padding: 8px 20px; font-size: 14px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; transition: background 0.3s; white-space: nowrap;" onmouseover="this.style.background='#4338CA'" onmouseout="this.style.background='#4F46E5'">
+                                        View My Plans
+                                    </a>
+                                </div>
+                            </div>
                         @endif
                     @else
                         <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
@@ -248,22 +289,33 @@
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                    <div class="p-6 flex justify-between items-center">
-                        <div>
-                            <p class="text-sm text-gray-600">Generated at {{ $dietPlanData['generated_at'] }}</p>
+                @if(isset($showPlan) && isset($planId))
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="p-6 flex justify-between items-center flex-wrap gap-4">
+                            <div>
+                                <p class="text-sm text-gray-600">Generated at {{ $dietPlanData['generated_at'] }}</p>
+                            </div>
+                            <div class="flex gap-4">
+                                @if(!$hasReachedLimit)
+                                    <form method="POST" action="{{ route('diet-plan.generate') }}">
+                                        @csrf
+                                        <button type="submit" style="background: #FFA500; color: white; padding: 8px 32px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: background 0.3s;" onmouseover="this.style.background='#FF8C00'" onmouseout="this.style.background='#FFA500'">
+                                            Generate New Plan
+                                        </button>
+                                    </form>
+                                @endif
+
+                                <form method="POST" action="{{ route('diet-plan.destroy', $planId) }}" onsubmit="return confirm('Are you sure you want to delete this diet plan?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" style="background: #DC2626; color: white; padding: 8px 32px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: background 0.3s;" onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
+                                        Delete Plan
+                                    </button>
+                                </form>
+                            </div>
                         </div>
-                        <form method="POST" action="{{ route('diet-plan.generate') }}">
-                            @csrf
-                            <button type="submit" class="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 border border-transparent rounded-md font-semibold text-white hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                                Generate New Plan
-                            </button>
-                        </form>
                     </div>
-                </div>
+                @endif
 
                 <!-- Disclaimer -->
                 <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">

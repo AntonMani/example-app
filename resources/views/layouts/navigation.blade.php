@@ -20,6 +20,10 @@
                     <x-nav-link :href="route('diet-plan')" :active="request()->routeIs('diet-plan')">
                         {{ __('Diet Plan') }}
                     </x-nav-link>
+
+                    <x-nav-link :href="route('diet-plan.list')" :active="request()->routeIs('diet-plan.list')">
+                        {{ __('My Plans') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -83,6 +87,10 @@
 
             <x-responsive-nav-link :href="route('diet-plan')" :active="request()->routeIs('diet-plan')">
                 {{ __('Diet Plan') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('diet-plan.list')" :active="request()->routeIs('diet-plan.list')">
+                {{ __('My Plans') }}
             </x-responsive-nav-link>
         </div>
 

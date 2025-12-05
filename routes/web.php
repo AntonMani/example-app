@@ -23,6 +23,13 @@ Route::middleware('auth')->group(function () {
     // Diet Plan routes
     Route::get('/diet-plan', [DietPlanController::class, 'index'])->name('diet-plan');
     Route::post('/diet-plan/generate', [DietPlanController::class, 'generate'])->name('diet-plan.generate');
+
+    // Diet Plan routes
+    Route::get('/diet-plan', [DietPlanController::class, 'index'])->name('diet-plan');
+    Route::post('/diet-plan/generate', [DietPlanController::class, 'generate'])->name('diet-plan.generate');
+    Route::get('/diet-plan/{id}', [DietPlanController::class, 'show'])->name('diet-plan.show');
+    Route::delete('/diet-plan/{id}', [DietPlanController::class, 'destroy'])->name('diet-plan.destroy');
+    Route::get('/my-diet-plans', [DietPlanController::class, 'myPlans'])->name('diet-plan.list');
 });
 
 require __DIR__.'/auth.php';

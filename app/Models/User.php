@@ -39,4 +39,10 @@ class User extends Authenticatable
             'weight' => 'decimal:2',
         ];
     }
+
+    // Relationship: A user has many diet plans
+    public function dietPlans()
+    {
+        return $this->hasMany(DietPlan::class);
+    }
 }
